@@ -1,4 +1,4 @@
-import org.junit.platform.commons.annotation.Testable;
+package src;
 
 /**
  * Board that represents a Sudoku puzzle. Puzzle may be fully or partially solved.
