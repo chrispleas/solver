@@ -221,13 +221,4 @@ class SudokuBoardTest {
         System.out.println(s);
     }
 
-
-
-
-
-
-
-
-
-
 }
