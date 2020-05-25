@@ -1,12 +1,17 @@
 package src;
 
+import java.util.Arrays;
+
 /**
  * Board that represents a Sudoku puzzle. Puzzle may be fully or partially solved.
  * Unsolved squares have the value 0.
  */
 public class SudokuBoard {
-	public int[] board;
-	int[] res;
+	private int[] board;
+	private static final int BOARD_WIDTH = 9;
+	private static final int BOX_WIDTH = 3;
+	private int val, row, col, box, anchorRow, anchorCol;
+	private boolean[] seenNumbers = new boolean[BOARD_WIDTH];
 
 	public SudokuBoard(int[] board) {
 		if (board == null || board.length != 81) {
@@ -20,10 +25,14 @@ public class SudokuBoard {
 		this.board = board;
 	}
 
+	public int[] getBoard() {
+		return board;
+	}
+
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < board.length; i++) {
-			if (i != 0 && i % 9 == 0) {
+			if (i != 0 && i % BOARD_WIDTH == 0) {
 				sb.append("\n");
 			} else if (i != 0) {
 				sb.append(" ");
@@ -34,84 +43,100 @@ public class SudokuBoard {
 	}
 
 	/**
-	 * Check for errors in rows, columns, and boxes.
-	 * Loops from (0,8) on inner and outer for loops.
+	 * Validate rows, columns, and boxes using only primitive types. Returns true if a
+	 * solution was found and false if a solution was not found.
 	 * <p>
-	 * "seenIn" arrays act like sets that checks to see if the value
-	 * is already a member. They are reset on each outer loop.
+	 * Reuses the val, row, col, box, anchorRow, and anchorCol variables to avoid
+	 * creating new variables.
 	 * <p>
-	 * The box variable runs from (0,8) and represents different boxes
-	 * in the puzzle starting at the top right box and then running
-	 * reading direction (right and then down) through all of the boxes.
+	 * The seenNumbers array acts like a set that checks to see if the value is already a
+	 * member.
+	 * <p>
+	 * The box variable runs from (0,8) and represents different boxes in the puzzle
+	 * starting at the top left box and then running reading direction (right and then
+	 * down) through all of the boxes. The "anchors" represent the rop left square in
+	 * each box.
 	 */
 	public boolean isValid() {
-		// Row and column validation
-		boolean[] seenInRows, seenInCols;
-		int rowVal, colVal;
-
-		for (int i = 0; i < 9; i++) {
-			seenInRows = new boolean[]{false, false, false, false, false, false, false, false, false};
-			seenInCols = new boolean[]{false, false, false, false, false, false, false, false, false};
-			for (int j = 0; j < 9; j++) {
-				// Columns and row validation
-				rowVal = this.get(i, j);
-				colVal = this.get(j, i);
-				if (rowVal != 0) {
-					if (seenInRows[rowVal - 1]) return false;
-					else seenInRows[rowVal - 1] = true;
+		// Row validation
+		for (row = 0; row < BOARD_WIDTH; row++) {
+			Arrays.fill(seenNumbers, false);
+			for (col = 0; col < BOARD_WIDTH; col++) {
+				val = get(row, col);
+				if (val != 0) {
+					if (seenNumbers[val - 1]) return false;
+					else seenNumbers[val - 1] = true;
 				}
-				if (colVal != 0) {
-					if (seenInCols[colVal - 1]) return false;
-					else seenInCols[colVal - 1] = true;
+			}
+		}
+
+		// Column validation
+		for (col = 0; col < BOARD_WIDTH; col++) {
+			Arrays.fill(seenNumbers, false);
+			for (row = 0; row < BOARD_WIDTH; row++) {
+				val = get(row, col);
+				if (val != 0) {
+					if (seenNumbers[val - 1]) return false;
+					else seenNumbers[val - 1] = true;
 				}
 			}
 		}
 
 		// Box validation
-		boolean[] seenInBox;
-		int anchorRow, anchorCol, boxVal;
-		for (int box = 0; box < 9; box++) {
-			seenInBox = new boolean[]{false, false, false, false, false, false, false, false, false};
-			anchorCol = (box % 3) * 3;
-			anchorRow = (box / 3) * 3;
-			for (int row = 0; row < 3; row++) {
-				for (int col = 0; col < 3; col++) {
-					boxVal = this.get(anchorRow + row, anchorCol + col);
-					if (boxVal != 0) {
-						if (seenInBox[boxVal - 1]) return false;
-						else seenInBox[boxVal - 1] = true;
+		for (box = 0; box < BOARD_WIDTH; box++) {
+			Arrays.fill(seenNumbers, false);
+			anchorCol = (box % BOX_WIDTH) * BOX_WIDTH;
+			anchorRow = (box / BOX_WIDTH) * BOX_WIDTH;
+			for (row = 0; row < BOX_WIDTH; row++) {
+				for (col = 0; col < BOX_WIDTH; col++) {
+					val = this.get(anchorRow + row, anchorCol + col);
+					if (val != 0) {
+						if (seenNumbers[val - 1]) return false;
+						else seenNumbers[val - 1] = true;
 					}
 				}
 			}
 		}
 
-		// The position is valid
+		// All validations passed
 		return true;
 	}
 
 	/* Utility function to get the value at a certain (row, column) equivalent */
 	private int get(int row, int col) {
-		return this.board[col + row * 9];
+		return board[col + row * BOARD_WIDTH];
 	}
 
 	/* Utility function to get the value at a certain (row, column) equivalent */
 	private void set(int row, int col, int val) {
-		this.board[col + row * 9] = val;
+		board[col + row * BOARD_WIDTH] = val;
 	}
 
+	/**
+	 * Recursive DFS algorithm that stops when any solution is found.
+	 * After solving, use getBoard() to see the solution.
+	 *
+	 * @return true if a solution was found, else false
+	 * <p>
+	 * Solves Arto Inkala's "world's hardest Sudoku" in about 200 ms, finds a solution
+	 * for a blank board in about 10 ms, and solves random boards in <10 ms.
+	 */
 	public boolean solve() {
 		if (!isValid()) return false;
-		for (int row = 0; row < 9; row++) {
-			for (int col = 0; col < 9; col++) {
+		for (int row = 0; row < BOARD_WIDTH; row++) {
+			for (int col = 0; col < BOARD_WIDTH; col++) {
 				// Search for an empty cell
 				if (get(row, col) == 0) {
 					// Try all values
-					for (int val = 1; val <= 9; val++) {
+					for (int val = 1; val <= BOARD_WIDTH; val++) {
+						// Update the current blank for testing
 						set(row, col, val);
 						if (solve()) return true;
+						// Undo the updated val
 						set(row, col, 0);
 					}
-					return false; // we return false
+					// None of the values worked
+					return false;
 				}
 			}
 		}
